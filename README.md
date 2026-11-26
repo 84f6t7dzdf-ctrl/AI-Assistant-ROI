@@ -1,7 +1,7 @@
 # AI-Assistant-ROI
 A company wants to know whether rolling out an AI assistant (such as Claude for Work) to its staff pays for itself
 
-This repo is a small Streamlit app that models the first 12 months of a rollout. You change the assumptions in the sidebar, and the page shows net value, ROI, payback month, break-even hours, 12-month payback hours and a chart of cumulative net value.
+This repo is a small Streamlit app that models the first 12 months of a rollout. You pick a preset (Base case, Low case or Pilot) or change the assumptions in the sidebar yourself, and the page shows net value, ROI, payback month, break-even hours, 12-month payback hours and a chart of cumulative net value.
 
 ## Run it on your computer
 

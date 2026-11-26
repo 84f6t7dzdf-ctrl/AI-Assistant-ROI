@@ -34,3 +34,17 @@ LABELS = {
     "training_hours_per_person": "Training hours per person",
     "seats_for_active_only": "Buy seats only for active users",
 }
+
+# Named scenarios for the app's preset dropdown. Each starts from DEFAULTS and
+# overrides only the values listed (also estimates). The seats toggle is not
+# part of any preset, so it stays as the user left it.
+PRESET_OVERRIDES = {
+    "Base case": {},
+    "Low case": {"adoption": 0.3, "hours_saved_per_week": 1.0},
+    "Pilot": {"staff": 50, "rollout_one_off_gbp": 5000, "admin_per_month_gbp": 0},
+}
+
+
+def preset(name: str) -> dict:
+    """Full set of assumptions for a named preset."""
+    return {**DEFAULTS, **PRESET_OVERRIDES[name]}
