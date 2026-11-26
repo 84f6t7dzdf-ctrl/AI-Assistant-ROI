@@ -11,6 +11,7 @@ from logic import (
     hand_checks,
     monthly_table,
     payback_hours_12m,
+    pilot_plan,
     sensitivity,
     summary,
 )
@@ -114,6 +115,9 @@ bars = alt.Chart(sens).mark_bar().encode(
 )
 base_line = alt.Chart(sens.head(1)).mark_rule(strokeDash=[4, 4]).encode(x="base_net_value:Q")
 st.altair_chart((bars + base_line).properties(height=260))
+
+st.subheader("Pilot plan")
+st.markdown(pilot_plan(inputs))
 
 with st.expander("Monthly table"):
     st.dataframe(table.style.format({

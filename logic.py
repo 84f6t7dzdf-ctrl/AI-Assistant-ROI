@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from assumptions import DEFAULTS
+from assumptions import DEFAULTS, PRESET_OVERRIDES
 
 
 def _with_defaults(inputs: dict | None) -> dict:
@@ -214,3 +214,38 @@ def sensitivity(inputs: dict | None = None, months: int = 12) -> pd.DataFrame:
         })
     df = pd.DataFrame(rows)
     return df.sort_values("range", ascending=False, kind="stable").reset_index(drop=True)
+
+
+PILOT_WEEKS = 8
+PILOT_STAFF = PRESET_OVERRIDES["Pilot"]["staff"]
+
+
+def pilot_plan(inputs: dict | None = None) -> str:
+    """Markdown text for a pilot plan, generated from the inputs.
+
+    The pass mark is the steady-state break-even hours for the inputs given,
+    so it moves with the sidebar.
+    """
+    i = _with_defaults(inputs)
+    pass_mark = breakeven_hours(i)
+    pass_text = "not reachable with these inputs" if pass_mark == float("inf") else f"{pass_mark:.2f}"
+    return f"""\
+**Pilot size:** {PILOT_STAFF} staff, from the teams most likely to use it.
+
+**Length:** {PILOT_WEEKS} weeks.
+
+**Pass mark:** active users save an average of at least **{pass_text} hours per week** \
+over the last 4 weeks of the pilot. That is the break-even point for the current inputs, \
+where monthly benefit covers monthly licence and admin cost.
+
+**How to measure it:**
+- **Weekly two-question survey** to every pilot user:
+  1. *Roughly how many hours did the AI assistant save you this week?*
+  2. *About what share of that time went into other useful work?* (0-100%)
+- **Usage logs** from the admin console: weekly active users and sessions per user.
+
+**How to read the results:**
+- Q1, averaged over active users, is compared with the pass mark.
+- Q2 tests the realisation assumption, currently {i["realisation"]:.0%}.
+- The usage logs test the adoption assumption, currently {i["adoption"]:.0%} of staff active.
+"""

@@ -33,6 +33,7 @@ from logic import (  # noqa: E402
     hand_checks,
     monthly_table,
     payback_hours_12m,
+    pilot_plan,
     sensitivity,
     summary,
 )
@@ -231,3 +232,18 @@ def test_sensitivity():
     ordered = sensitivity(DEFAULTS)
     assert ordered["range"].tolist() == pytest.approx([569250, 569250, 474375, 296250, 90000])
     assert ordered["key"].tolist()[2:] == ["adoption", "hourly_cost_gbp", "licence_per_seat_month_gbp"]
+
+
+def test_pilot_plan():
+    text = pilot_plan(DEFAULTS)
+    assert "50 staff" in text
+    assert "8 weeks" in text
+    # Pass mark = steady-state break-even = 14,500 / 25,875 = 0.56
+    assert "at least **0.56 hours per week**" in text
+    assert "two-question survey" in text and "Usage logs" in text
+    assert "realisation assumption, currently 50%" in text
+    assert "currently 60% of staff active" in text
+    # Pass mark follows the inputs: toggle on -> 9,500 / 25,875 = 0.37
+    assert "**0.37 hours per week**" in pilot_plan(dict(DEFAULTS, seats_for_active_only=True))
+    # Zero adoption: no amount of time saved breaks even.
+    assert "not reachable" in pilot_plan(dict(DEFAULTS, adoption=0.0))
