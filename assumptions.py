@@ -16,6 +16,7 @@ DEFAULTS = {
     "admin_per_month_gbp": 2000,         # estimate: ongoing admin/support per month (GBP)
     "rollout_one_off_gbp": 40000,        # estimate: one-off rollout cost (GBP)
     "training_hours_per_person": 2,      # estimate: one-off training hours per person
+    "seats_for_active_only": False,      # policy choice: licence only active users (staff x adoption)
 }
 
 # Human-readable labels, used by the app sidebar.
@@ -31,4 +32,5 @@ LABELS = {
     "admin_per_month_gbp": "Admin per month (£)",
     "rollout_one_off_gbp": "One-off rollout (£)",
     "training_hours_per_person": "Training hours per person",
+    "seats_for_active_only": "Buy seats only for active users",
 }

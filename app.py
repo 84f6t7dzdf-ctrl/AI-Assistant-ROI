@@ -36,6 +36,13 @@ with st.sidebar:
         value = type(kwargs["step"])(default)
         widget = st.slider if kind == "slider" else st.number_input
         inputs[key] = widget(LABELS[key], value=value, key=key, **kwargs)
+    inputs["seats_for_active_only"] = st.toggle(
+        LABELS["seats_for_active_only"],
+        value=DEFAULTS["seats_for_active_only"],
+        key="seats_for_active_only",
+        help="On: licences are bought for staff x adoption each month (following the ramp). "
+        "Off: every member of staff gets a seat.",
+    )
 
 table = monthly_table(inputs)
 s = summary(inputs)

@@ -127,3 +127,32 @@ def test_hand_checks_all_pass():
     assert len(checks) == 9
     failed = [c["name"] for c in checks if not c["passed"]]
     assert failed == []
+
+
+def test_seats_for_active_only():
+    """Hand working with the toggle on (other inputs at defaults):
+    Seats follow adoption: m1 100, m2 200, m3-12 300.
+    Running cost: m1 100x25+2,000 = 4,500; m2 200x25+2,000 = 7,000;
+                  m3-12 300x25+2,000 = 9,500 each -> 4,500 + 7,000 + 10 x 9,500 = 106,500
+    Total cost = 85,000 (one-off, unchanged) + 106,500 = 191,500
+    Net value  = 711,562.5 - 191,500 = 520,062.5
+    Cumulative: m0 -85,000; m1 -67,937.5; m2 -31,812.5; m3 +23,375 -> payback month 3
+    Break-even hours (steady state) = 9,500 / 25,875 = 0.367150...
+    12-month payback hours = 191,500 / 284,625 = 0.672815...
+    """
+    on = dict(DEFAULTS, seats_for_active_only=True)
+    df = monthly_table(on)
+    assert df["cost"].tolist()[:4] == pytest.approx([85000.0, 4500.0, 7000.0, 9500.0])
+    assert df["cost"].iloc[-1] == pytest.approx(9500.0)
+    assert df["cumulative_net_value"].tolist()[:4] == pytest.approx(
+        [-85000.0, -67937.5, -31812.5, 23375.0]
+    )
+    s = summary(on)
+    assert s["total_cost"] == pytest.approx(191500.0)
+    assert s["net_value"] == pytest.approx(520062.5)
+    assert s["payback_month"] == 3
+    assert breakeven_hours(on) == pytest.approx(9500 / 25875)
+    assert payback_hours_12m(on) == pytest.approx(191500 / 284625)
+    # Default is off, so the original numbers are unchanged.
+    assert DEFAULTS["seats_for_active_only"] is False
+    assert summary(DEFAULTS)["total_cost"] == pytest.approx(259000.0)
