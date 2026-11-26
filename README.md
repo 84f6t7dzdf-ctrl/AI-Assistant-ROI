@@ -37,4 +37,4 @@ With the virtual environment active, run `pytest`. The tests check the calculati
 - **Adoption** ramps up in a straight line to its target over the ramp-up months. With a 3-month ramp and a 60% target, that's 20%, 40%, then 60% from month 3 onwards.
 - **ROI** = net value ÷ total cost, over months 0 to 12.
 - **Payback month** is the first month where cumulative net value reaches zero or more.
-- **Break-even hours** is the hours saved per user per week that would make the 12-month net value exactly zero, with everything else unchanged.
+- **Break-even hours** is the hours saved per active user per week at which the monthly benefit, once adoption has reached its target, equals the monthly licence and admin cost. It ignores the one-off cost and the ramp-up. With the defaults it's about 0.56 hours.

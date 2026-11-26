@@ -12,7 +12,9 @@ Hand working (defaults):
   Net value     = 452,562.50
   ROI           = 452,562.5 / 259,000 = 1.747345...
   Cumulative:   m0 -85,000; m1 -77,937.5; m2 -49,312.5; m3 +875 -> payback month 3
-  Break-even hours = 259,000 / (711,562.5 / 2.5) = 259,000 / 284,625 = 0.909969...
+  Break-even hours (steady state) = monthly running cost / benefit per hour
+                   = 14,500 / (500 x 0.6 x 46/12 x 45 x 0.5)
+                   = 14,500 / 25,875 = 0.560386...
 """
 
 import math
@@ -65,10 +67,12 @@ def test_summary():
 
 
 def test_breakeven_hours():
-    assert breakeven_hours(DEFAULTS) == pytest.approx(259000 / 284625)
-    # At break-even hours, net value is zero.
+    assert breakeven_hours(DEFAULTS) == pytest.approx(14500 / 25875)
+    assert breakeven_hours(DEFAULTS) == pytest.approx(0.560386, abs=1e-6)
+    # At break-even hours, a steady-state month (month 12) nets to zero.
     at_be = dict(DEFAULTS, hours_saved_per_week=breakeven_hours(DEFAULTS))
-    assert summary(at_be)["net_value"] == pytest.approx(0.0, abs=1e-6)
+    last = monthly_table(at_be).iloc[-1]
+    assert last["benefit"] == pytest.approx(last["cost"])
 
 
 def test_no_payback_and_no_ramp():
