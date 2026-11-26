@@ -15,6 +15,8 @@ Hand working (defaults):
   Break-even hours (steady state) = monthly running cost / benefit per hour
                    = 14,500 / (500 x 0.6 x 46/12 x 45 x 0.5)
                    = 14,500 / 25,875 = 0.560386...
+  12-month payback hours = total cost / (total benefit per 1 hour saved)
+                   = 259,000 / (711,562.5 / 2.5) = 259,000 / 284,625 = 0.909969...
 """
 
 import math
@@ -26,7 +28,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from assumptions import DEFAULTS  # noqa: E402
-from logic import breakeven_hours, monthly_table, summary  # noqa: E402
+from logic import breakeven_hours, monthly_table, payback_hours_12m, summary  # noqa: E402
 
 
 def test_table_shape_and_columns():
@@ -73,6 +75,17 @@ def test_breakeven_hours():
     at_be = dict(DEFAULTS, hours_saved_per_week=breakeven_hours(DEFAULTS))
     last = monthly_table(at_be).iloc[-1]
     assert last["benefit"] == pytest.approx(last["cost"])
+
+
+def test_payback_hours_12m():
+    assert payback_hours_12m(DEFAULTS) == pytest.approx(259000 / 284625)
+    assert payback_hours_12m(DEFAULTS) == pytest.approx(0.909969, abs=1e-6)
+    # At payback hours, cumulative net value at month 12 is zero.
+    at_pb = dict(DEFAULTS, hours_saved_per_week=payback_hours_12m(DEFAULTS))
+    assert monthly_table(at_pb)["cumulative_net_value"].iloc[-1] == pytest.approx(0.0, abs=1e-6)
+    # Paying back the one-off cost needs more hours than steady-state break-even.
+    assert payback_hours_12m(DEFAULTS) > breakeven_hours(DEFAULTS)
+    assert math.isinf(payback_hours_12m(dict(DEFAULTS, adoption=0.0)))
 
 
 def test_no_payback_and_no_ramp():

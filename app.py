@@ -5,7 +5,7 @@ import math
 import streamlit as st
 
 from assumptions import DEFAULTS, LABELS
-from logic import breakeven_hours, monthly_table, summary
+from logic import breakeven_hours, monthly_table, payback_hours_12m, summary
 
 st.set_page_config(page_title="AI Assistant ROI", layout="wide")
 st.title("AI Assistant ROI")
@@ -40,14 +40,17 @@ with st.sidebar:
 table = monthly_table(inputs)
 s = summary(inputs)
 be = breakeven_hours(inputs)
+pb = payback_hours_12m(inputs)
 
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3, c4, c5 = st.columns(5)
 net = s["net_value"]
 c1.metric("Net value (12 months)", f"{'-' if net < 0 else ''}£{abs(net):,.0f}")
 c2.metric("ROI", "n/a" if math.isnan(s["roi"]) else f"{s['roi']:.0%}")
 c3.metric("Payback month", "Not within 12 months" if s["payback_month"] is None else f"Month {s['payback_month']}")
 c4.metric("Break-even hours", "n/a" if math.isinf(be) else f"{be:.2f}")
 c4.caption("hours per user per week to break even")
+c5.metric("12-month payback hours", "n/a" if math.isinf(pb) else f"{pb:.2f}")
+c5.caption("hours per user per week to pay back within 12 months")
 
 st.subheader("Cumulative net value (£)")
 st.line_chart(table.set_index("month")["cumulative_net_value"])
@@ -61,5 +64,6 @@ with st.expander("Monthly table"):
 st.caption(
     "Month 0 holds the one-off cost (rollout + training time). ROI = net value / total cost. "
     "Break-even hours is the time saved per active user per week at which steady-state monthly "
-    "benefit equals monthly licence and admin cost."
+    "benefit equals monthly licence and admin cost. 12-month payback hours is the time saved per active "
+    "user per week needed to also recover the one-off cost, so cumulative net value is zero at month 12."
 )
