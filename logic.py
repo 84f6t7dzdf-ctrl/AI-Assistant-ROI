@@ -127,3 +127,46 @@ def payback_hours_12m(inputs: dict | None = None, months: int = 12) -> float:
     if s["total_benefit"] <= 0:
         return float("inf")
     return s["total_cost"] / s["total_benefit"]
+
+
+# Hand-computed expected values for the DEFAULT assumptions (see tests/test_logic.py
+# for the working). hand_checks() reruns the model and compares against them.
+HAND_CHECKS = [
+    ("Full month benefit (month 3)", 64687.5),
+    ("Full month cost (month 3)", 14500.0),
+    ("12-month total benefit", 711562.5),
+    ("12-month total cost", 259000.0),
+    ("12-month net value", 452562.5),
+    ("Payback month", 3),
+    ("Payback month when benefit < cost (0.5 h/week)", None),
+    ("Break-even hours (steady state)", 14500 / 25875),
+    ("12-month payback hours", 259000 / 284625),
+]
+
+
+def hand_checks(tolerance: float = 1e-6) -> list[dict]:
+    """Rerun the model on DEFAULTS and compare with the hand-computed values.
+
+    Returns one dict per check: name, expected, actual, passed.
+    """
+    table = monthly_table(DEFAULTS).set_index("month")
+    s = summary(DEFAULTS)
+    actuals = [
+        float(table.loc[3, "benefit"]),
+        float(table.loc[3, "cost"]),
+        s["total_benefit"],
+        s["total_cost"],
+        s["net_value"],
+        s["payback_month"],
+        summary(dict(DEFAULTS, hours_saved_per_week=0.5))["payback_month"],
+        breakeven_hours(DEFAULTS),
+        payback_hours_12m(DEFAULTS),
+    ]
+    results = []
+    for (name, expected), actual in zip(HAND_CHECKS, actuals):
+        if expected is None or actual is None:
+            passed = expected is actual
+        else:
+            passed = abs(actual - expected) <= tolerance * max(1.0, abs(expected))
+        results.append({"name": name, "expected": expected, "actual": actual, "passed": passed})
+    return results

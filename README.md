@@ -19,7 +19,7 @@ Press `Ctrl+C` in the terminal to stop the app. Next time, you only need step 2,
 
 ## Run the tests
 
-With the virtual environment active, run `pytest`. The tests check the calculations against numbers worked out by hand.
+With the virtual environment active, run `pytest`. The tests check the calculations against numbers worked out by hand. You can also see these checks in the app: open the **Checks** panel at the bottom of the page for a tick or cross next to each one.
 
 ## Files
 
