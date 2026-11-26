@@ -5,7 +5,8 @@ import math
 import altair as alt
 import streamlit as st
 
-from assumptions import DEFAULTS, LABELS, PRESET_OVERRIDES, preset
+import pandas as pd
+from assumptions import CONTROLS, DEFAULTS, LABELS, PRESET_OVERRIDES, SOURCES, clean_value, preset
 from logic import (
     breakeven_hours,
     hand_checks,
@@ -20,37 +21,50 @@ st.set_page_config(page_title="AI Assistant ROI", layout="wide")
 st.title("AI Assistant ROI")
 st.caption("12-month view. All defaults are estimates: adjust them in the sidebar.")
 
-# (widget, kwargs) per assumption. Sliders for bounded ratios/small ranges,
-# number inputs for open-ended money and headcount values.
-CONTROLS = {
-    "staff": ("number", dict(min_value=1, step=10)),
-    "adoption": ("slider", dict(min_value=0.0, max_value=1.0, step=0.05)),
-    "ramp_months": ("slider", dict(min_value=0, max_value=12, step=1)),
-    "hours_saved_per_week": ("slider", dict(min_value=0.0, max_value=10.0, step=0.1)),
-    "hourly_cost_gbp": ("number", dict(min_value=0.0, step=1.0)),
-    "realisation": ("slider", dict(min_value=0.0, max_value=1.0, step=0.05)),
-    "working_weeks": ("slider", dict(min_value=1, max_value=52, step=1)),
-    "licence_per_seat_month_gbp": ("number", dict(min_value=0.0, step=1.0)),
-    "admin_per_month_gbp": ("number", dict(min_value=0.0, step=100.0)),
-    "rollout_one_off_gbp": ("number", dict(min_value=0.0, step=1000.0)),
-    "training_hours_per_person": ("slider", dict(min_value=0.0, max_value=20.0, step=0.5)),
-}
+TOGGLE = "seats_for_active_only"
+
 
 def _widget_value(key, value):
     # Keep widget value type consistent with its step type (int vs float).
     return type(CONTROLS[key][1]["step"])(value)
 
 
-def _apply_preset():
-    """Fill every sidebar control with the chosen preset's values."""
-    values = preset(st.session_state["preset"])
+def _set_all(values):
+    """Write a full set of values into the widgets' session state (one source of truth)."""
     for key in CONTROLS:
         st.session_state[key] = _widget_value(key, values[key])
+    # Force the Assumptions table to rebuild from the new values.
+    st.session_state["table_version"] += 1
 
 
-# First run: start the controls at the defaults.
+def _apply_preset():
+    """Fill every control with the chosen preset's values. The seats toggle is left alone."""
+    _set_all(preset(st.session_state["preset"]))
+
+
+def _reset():
+    """Back to Base case defaults, including the seats toggle."""
+    st.session_state["preset"] = "Base case"
+    st.session_state[TOGGLE] = DEFAULTS[TOGGLE]
+    _set_all(DEFAULTS)
+
+
+def _apply_table_edits():
+    """Copy edits from the Assumptions table into the shared session state."""
+    edits = st.session_state[f"assumptions_table_{st.session_state['table_version']}"]["edited_rows"]
+    keys = list(CONTROLS)
+    for row, change in edits.items():
+        if change.get("Value") is not None:
+            key = keys[int(row)]
+            st.session_state[key] = clean_value(key, change["Value"])
+    st.session_state["table_version"] += 1
+
+
+# First run: start everything at the defaults.
 for key in CONTROLS:
     st.session_state.setdefault(key, _widget_value(key, DEFAULTS[key]))
+st.session_state.setdefault(TOGGLE, DEFAULTS[TOGGLE])
+st.session_state.setdefault("table_version", 0)
 
 inputs = {}
 with st.sidebar:
@@ -61,17 +75,41 @@ with st.sidebar:
         on_change=_apply_preset,
         help="Fills in the assumptions below. You can still adjust them afterwards.",
     )
+    st.button("Reset to defaults", on_click=_reset)
     st.header("Assumptions (estimates)")
     for key, (kind, kwargs) in CONTROLS.items():
         widget = st.slider if kind == "slider" else st.number_input
         inputs[key] = widget(LABELS[key], key=key, **kwargs)
-    inputs["seats_for_active_only"] = st.toggle(
-        LABELS["seats_for_active_only"],
-        value=DEFAULTS["seats_for_active_only"],
-        key="seats_for_active_only",
+    inputs[TOGGLE] = st.toggle(
+        LABELS[TOGGLE],
+        key=TOGGLE,
         help="On: licences are bought for staff x adoption each month (following the ramp). "
         "Off: every member of staff gets a seat.",
     )
+
+with st.expander("Assumptions"):
+    st.caption(
+        "Edit a value to recalculate. This table and the sidebar show the same numbers, "
+        "so a change in one appears in the other. Values outside a control's range are clamped."
+    )
+    st.data_editor(
+        pd.DataFrame(
+            {
+                "Assumption": [LABELS[k] for k in CONTROLS],
+                "Value": [float(inputs[k]) for k in CONTROLS],
+                "Default": [float(DEFAULTS[k]) for k in CONTROLS],
+                "Source": [SOURCES[k] for k in CONTROLS],
+            }
+        ),
+        key=f"assumptions_table_{st.session_state['table_version']}",
+        on_change=_apply_table_edits,
+        disabled=["Assumption", "Default", "Source"],
+        hide_index=True,
+        height=(len(CONTROLS) + 1) * 35 + 3,
+        column_config={"Value": st.column_config.NumberColumn(format="%g")},
+    )
+    st.caption(f"{LABELS[TOGGLE]}: **{'on' if inputs[TOGGLE] else 'off'}**. {SOURCES[TOGGLE]}")
+    st.button("Reset to defaults", key="reset_table", on_click=_reset)
 
 table = monthly_table(inputs)
 s = summary(inputs)

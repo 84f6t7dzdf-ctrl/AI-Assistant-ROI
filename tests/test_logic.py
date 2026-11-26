@@ -27,7 +27,7 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from assumptions import DEFAULTS, PRESET_OVERRIDES, preset  # noqa: E402
+from assumptions import CONTROLS, DEFAULTS, PRESET_OVERRIDES, SOURCES, clean_value, preset  # noqa: E402
 from logic import (  # noqa: E402
     breakeven_hours,
     hand_checks,
@@ -247,3 +247,24 @@ def test_pilot_plan():
     assert "**0.37 hours per week**" in pilot_plan(dict(DEFAULTS, seats_for_active_only=True))
     # Zero adoption: no amount of time saved breaks even.
     assert "not reachable" in pilot_plan(dict(DEFAULTS, adoption=0.0))
+
+
+def test_every_assumption_has_a_source_note():
+    assert set(SOURCES) == set(DEFAULTS)
+    for key in CONTROLS:
+        assert SOURCES[key].startswith("Estimate"), key
+
+
+def test_clean_value():
+    # Ints stay ints, floats stay floats.
+    assert clean_value("staff", 250.0) == 250 and isinstance(clean_value("staff", 250.0), int)
+    assert isinstance(clean_value("hourly_cost_gbp", 50), float)
+    # Clamped to bounds.
+    assert clean_value("adoption", 1.7) == 1.0
+    assert clean_value("staff", -5) == 1
+    assert clean_value("working_weeks", 60) == 52
+    # Snapped to slider steps (adoption step 0.05, hours step 0.1).
+    assert clean_value("adoption", 0.62) == pytest.approx(0.6)
+    assert clean_value("hours_saved_per_week", 2.47) == pytest.approx(2.5)
+    # Number inputs are not snapped.
+    assert clean_value("hourly_cost_gbp", 47.3) == pytest.approx(47.3)
