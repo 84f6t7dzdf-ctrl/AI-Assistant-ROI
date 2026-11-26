@@ -4,7 +4,7 @@ import math
 
 import streamlit as st
 
-from assumptions import DEFAULTS, LABELS
+from assumptions import DEFAULTS, LABELS, PRESET_OVERRIDES, preset
 from logic import breakeven_hours, hand_checks, monthly_table, payback_hours_12m, summary
 
 st.set_page_config(page_title="AI Assistant ROI", layout="wide")
@@ -27,15 +27,35 @@ CONTROLS = {
     "training_hours_per_person": ("slider", dict(min_value=0.0, max_value=20.0, step=0.5)),
 }
 
+def _widget_value(key, value):
+    # Keep widget value type consistent with its step type (int vs float).
+    return type(CONTROLS[key][1]["step"])(value)
+
+
+def _apply_preset():
+    """Fill every sidebar control with the chosen preset's values."""
+    values = preset(st.session_state["preset"])
+    for key in CONTROLS:
+        st.session_state[key] = _widget_value(key, values[key])
+
+
+# First run: start the controls at the defaults.
+for key in CONTROLS:
+    st.session_state.setdefault(key, _widget_value(key, DEFAULTS[key]))
+
 inputs = {}
 with st.sidebar:
+    st.selectbox(
+        "Preset",
+        list(PRESET_OVERRIDES),
+        key="preset",
+        on_change=_apply_preset,
+        help="Fills in the assumptions below. You can still adjust them afterwards.",
+    )
     st.header("Assumptions (estimates)")
     for key, (kind, kwargs) in CONTROLS.items():
-        default = DEFAULTS[key]
-        # Keep widget value type consistent with its step type.
-        value = type(kwargs["step"])(default)
         widget = st.slider if kind == "slider" else st.number_input
-        inputs[key] = widget(LABELS[key], value=value, key=key, **kwargs)
+        inputs[key] = widget(LABELS[key], key=key, **kwargs)
     inputs["seats_for_active_only"] = st.toggle(
         LABELS["seats_for_active_only"],
         value=DEFAULTS["seats_for_active_only"],

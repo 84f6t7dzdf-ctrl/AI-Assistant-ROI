@@ -27,7 +27,7 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from assumptions import DEFAULTS  # noqa: E402
+from assumptions import DEFAULTS, PRESET_OVERRIDES, preset  # noqa: E402
 from logic import breakeven_hours, hand_checks, monthly_table, payback_hours_12m, summary  # noqa: E402
 
 
@@ -156,3 +156,41 @@ def test_seats_for_active_only():
     # Default is off, so the original numbers are unchanged.
     assert DEFAULTS["seats_for_active_only"] is False
     assert summary(DEFAULTS)["total_cost"] == pytest.approx(259000.0)
+
+
+def test_presets():
+    """Hand working for the presets (everything not listed is a default).
+
+    Base case = defaults: net value 452,562.5 (see top of file).
+    Low case (adoption 0.3, hours 1.0):
+      Full month benefit = 500 x 0.3 x 1.0 x 46/12 x 45 x 0.5 = 12,937.5
+      Total benefit = 4,312.5 + 8,625 + 10 x 12,937.5 = 142,312.5
+      Total cost unchanged = 259,000 -> net value -116,687.5, never pays back
+    Pilot (staff 50, rollout 5,000, admin 0):
+      One-off = 5,000 + 2 x 45 x 50 = 9,500; running = 50 x 25 = 1,250 / month
+      Full month benefit = 50 x 0.6 x 2.5 x 46/12 x 45 x 0.5 = 6,468.75
+      Total benefit = 2,156.25 + 4,312.5 + 10 x 6,468.75 = 71,156.25
+      Total cost = 9,500 + 12 x 1,250 = 24,500 -> net value 46,656.25
+      Cumulative: m0 -9,500; m1 -8,593.75; m2 -5,531.25; m3 -312.5; m4 +4,906.25
+      -> payback month 4
+    """
+    assert list(PRESET_OVERRIDES) == ["Base case", "Low case", "Pilot"]
+    assert preset("Base case") == DEFAULTS
+
+    low = preset("Low case")
+    assert (low["adoption"], low["hours_saved_per_week"]) == (0.3, 1.0)
+    assert low["staff"] == DEFAULTS["staff"]
+    s = summary(low)
+    assert s["total_benefit"] == pytest.approx(142312.5)
+    assert s["net_value"] == pytest.approx(-116687.5)
+    assert s["payback_month"] is None
+
+    pilot = preset("Pilot")
+    assert (pilot["staff"], pilot["rollout_one_off_gbp"], pilot["admin_per_month_gbp"]) == (50, 5000, 0)
+    s = summary(pilot)
+    assert s["total_benefit"] == pytest.approx(71156.25)
+    assert s["total_cost"] == pytest.approx(24500.0)
+    assert s["net_value"] == pytest.approx(46656.25)
+    assert s["payback_month"] == 4
+    # Presets never touch the seats toggle.
+    assert all("seats_for_active_only" not in o for o in PRESET_OVERRIDES.values())
