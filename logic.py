@@ -181,3 +181,36 @@ def hand_checks(tolerance: float = 1e-6) -> list[dict]:
             passed = abs(actual - expected) <= tolerance * max(1.0, abs(expected))
         results.append({"name": name, "expected": expected, "actual": actual, "passed": passed})
     return results
+
+
+# Low/high values tested by sensitivity(). Each is varied on its own, with every
+# other input held at the values passed in (the defaults unless overridden).
+SENSITIVITY_RANGES = {
+    "hours_saved_per_week": ("Hours saved per week", 1.5, 3.5),
+    "adoption": ("Adoption", 0.4, 0.8),
+    "realisation": ("Realisation", 0.3, 0.7),
+    "hourly_cost_gbp": ("Hourly cost (£)", 35, 55),
+    "licence_per_seat_month_gbp": ("Licence price (£/seat/month)", 20, 35),
+}
+
+
+def sensitivity(inputs: dict | None = None, months: int = 12) -> pd.DataFrame:
+    """One-at-a-time sensitivity of net value over the horizon.
+
+    For each driver in SENSITIVITY_RANGES, net value is computed at its low and
+    high value with everything else as in `inputs`. Returns one row per driver,
+    sorted by range (|net_at_high - net_at_low|), widest first.
+    """
+    i = _with_defaults(inputs)
+    base = summary(i, months)["net_value"]
+    rows = []
+    for key, (label, low, high) in SENSITIVITY_RANGES.items():
+        net_low = summary(dict(i, **{key: low}), months)["net_value"]
+        net_high = summary(dict(i, **{key: high}), months)["net_value"]
+        rows.append({
+            "driver": label, "key": key, "low": low, "high": high,
+            "net_at_low": net_low, "net_at_high": net_high,
+            "range": abs(net_high - net_low), "base_net_value": base,
+        })
+    df = pd.DataFrame(rows)
+    return df.sort_values("range", ascending=False, kind="stable").reset_index(drop=True)

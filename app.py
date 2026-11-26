@@ -2,10 +2,18 @@
 
 import math
 
+import altair as alt
 import streamlit as st
 
 from assumptions import DEFAULTS, LABELS, PRESET_OVERRIDES, preset
-from logic import breakeven_hours, hand_checks, monthly_table, payback_hours_12m, summary
+from logic import (
+    breakeven_hours,
+    hand_checks,
+    monthly_table,
+    payback_hours_12m,
+    sensitivity,
+    summary,
+)
 
 st.set_page_config(page_title="AI Assistant ROI", layout="wide")
 st.title("AI Assistant ROI")
@@ -81,6 +89,31 @@ c5.caption("hours per user per week to pay back within 12 months")
 
 st.subheader("Cumulative net value (£)")
 st.line_chart(table.set_index("month")["cumulative_net_value"])
+
+st.subheader("Sensitivity: 12-month net value (£)")
+st.caption(
+    "Each bar varies one assumption from its low to high value, with everything else "
+    "as set in the sidebar. The line is the current net value. Widest range at the top."
+)
+sens = sensitivity(inputs)
+sens["from"] = sens[["net_at_low", "net_at_high"]].min(axis=1)
+sens["to"] = sens[["net_at_low", "net_at_high"]].max(axis=1)
+sens["label"] = sens.apply(lambda r: f"{r['driver']} ({r['low']:g} to {r['high']:g})", axis=1)
+order = sens["label"].tolist()
+bars = alt.Chart(sens).mark_bar().encode(
+    y=alt.Y("label:N", sort=order, title=None, axis=alt.Axis(labelLimit=320)),
+    x=alt.X("from:Q", title="Net value (£)", axis=alt.Axis(format=",.0f")),
+    x2="to:Q",
+    tooltip=[
+        alt.Tooltip("driver:N", title="Assumption"),
+        alt.Tooltip("low:Q", title="Low value"),
+        alt.Tooltip("net_at_low:Q", title="Net value at low", format=",.0f"),
+        alt.Tooltip("high:Q", title="High value"),
+        alt.Tooltip("net_at_high:Q", title="Net value at high", format=",.0f"),
+    ],
+)
+base_line = alt.Chart(sens.head(1)).mark_rule(strokeDash=[4, 4]).encode(x="base_net_value:Q")
+st.altair_chart((bars + base_line).properties(height=260))
 
 with st.expander("Monthly table"):
     st.dataframe(table.style.format({
