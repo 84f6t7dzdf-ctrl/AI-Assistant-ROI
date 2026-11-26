@@ -1,7 +1,7 @@
 # AI-Assistant-ROI
 A company wants to know whether rolling out an AI assistant (such as Claude for Work) to its staff pays for itself
 
-This repo is a small Streamlit app that models the first 12 months of a rollout. You change the assumptions in the sidebar, and the page shows net value, ROI, payback month, break-even hours and a chart of cumulative net value.
+This repo is a small Streamlit app that models the first 12 months of a rollout. You change the assumptions in the sidebar, and the page shows net value, ROI, payback month, break-even hours, 12-month payback hours and a chart of cumulative net value.
 
 ## Run it on your computer
 
@@ -38,3 +38,4 @@ With the virtual environment active, run `pytest`. The tests check the calculati
 - **ROI** = net value ÷ total cost, over months 0 to 12.
 - **Payback month** is the first month where cumulative net value reaches zero or more.
 - **Break-even hours** is the hours saved per active user per week at which the monthly benefit, once adoption has reached its target, equals the monthly licence and admin cost. It ignores the one-off cost and the ramp-up. With the defaults it's about 0.56 hours.
+- **12-month payback hours** is the hours saved per active user per week needed to also win back the one-off cost, so the running total is back to zero by the end of month 12. It includes the ramp-up. With the defaults it's about 0.91 hours. Anything between the two figures covers the monthly costs but doesn't recover the one-off cost within the year.

@@ -15,6 +15,9 @@ Modelling choices (where the brief left room for interpretation):
 - Break-even hours = hours saved per active user per week at which the
   steady-state monthly benefit (full target adoption) equals the monthly
   running cost (licences + admin). The one-off cost and the ramp are ignored.
+- 12-month payback hours = hours saved per active user per week at which the
+  cumulative net value at the end of month 12 is exactly zero, i.e. the
+  one-off cost is recovered within the year. Includes the ramp and month 0.
 """
 
 from __future__ import annotations
@@ -109,3 +112,18 @@ def breakeven_hours(inputs: dict | None = None) -> float:
     if benefit_per_hour <= 0:
         return float("inf")
     return monthly_running_cost(i) / benefit_per_hour
+
+
+def payback_hours_12m(inputs: dict | None = None, months: int = 12) -> float:
+    """Hours saved per active user per week needed to pay back within the horizon.
+
+    That is, the hours at which cumulative net value at the end of the horizon
+    (one-off cost in month 0, ramp included) is exactly zero. Benefit is linear
+    in hours, so: hours = total_cost / (total benefit per 1 hour saved per week).
+    Returns inf if no amount of time saved can pay back (e.g. zero adoption).
+    """
+    i = _with_defaults(inputs)
+    s = summary(dict(i, hours_saved_per_week=1.0), months)
+    if s["total_benefit"] <= 0:
+        return float("inf")
+    return s["total_cost"] / s["total_benefit"]
