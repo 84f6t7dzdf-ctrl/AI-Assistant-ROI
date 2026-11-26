@@ -28,7 +28,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from assumptions import DEFAULTS  # noqa: E402
-from logic import breakeven_hours, monthly_table, payback_hours_12m, summary  # noqa: E402
+from logic import breakeven_hours, hand_checks, monthly_table, payback_hours_12m, summary  # noqa: E402
 
 
 def test_table_shape_and_columns():
@@ -120,3 +120,10 @@ def test_breakeven_hours_makes_benefit_equal_cost():
     at_be = dict(DEFAULTS, hours_saved_per_week=breakeven_hours(DEFAULTS))
     steady = monthly_table(at_be).query("month >= 3")
     assert steady["benefit"].tolist() == pytest.approx(steady["cost"].tolist())
+
+
+def test_hand_checks_all_pass():
+    checks = hand_checks()
+    assert len(checks) == 9
+    failed = [c["name"] for c in checks if not c["passed"]]
+    assert failed == []

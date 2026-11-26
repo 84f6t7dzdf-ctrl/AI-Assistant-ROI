@@ -5,7 +5,7 @@ import math
 import streamlit as st
 
 from assumptions import DEFAULTS, LABELS
-from logic import breakeven_hours, monthly_table, payback_hours_12m, summary
+from logic import breakeven_hours, hand_checks, monthly_table, payback_hours_12m, summary
 
 st.set_page_config(page_title="AI Assistant ROI", layout="wide")
 st.title("AI Assistant ROI")
@@ -60,6 +60,34 @@ with st.expander("Monthly table"):
         "adoption": "{:.0%}", "benefit": "£{:,.0f}", "cost": "£{:,.0f}",
         "net": "£{:,.0f}", "cumulative_net_value": "£{:,.0f}",
     }), hide_index=True)
+
+def _fmt(v):
+    if v is None:
+        return "None"
+    if isinstance(v, int):
+        return str(v)
+    return f"{v:,.2f}" if abs(v) >= 100 else f"{v:.4f}"
+
+
+checks = hand_checks()
+n_passed = sum(c["passed"] for c in checks)
+with st.expander(f"Checks: {n_passed}/{len(checks)} passed"):
+    st.caption(
+        "Reruns the model on the default assumptions (not your sidebar values) "
+        "and compares it with numbers worked out by hand."
+    )
+    st.dataframe(
+        [
+            {
+                "": "✅" if c["passed"] else "❌",
+                "Check": c["name"],
+                "Expected": _fmt(c["expected"]),
+                "Actual": _fmt(c["actual"]),
+            }
+            for c in checks
+        ],
+        hide_index=True,
+    )
 
 st.caption(
     "Month 0 holds the one-off cost (rollout + training time). ROI = net value / total cost. "
