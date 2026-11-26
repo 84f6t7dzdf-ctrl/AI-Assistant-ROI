@@ -8,7 +8,10 @@ Modelling choices (where the brief left room for interpretation):
   ramp month 1 is 1/3 of target and month 3 reaches target. ramp_months <= 0
   means full adoption from month 1.
 - Licences are paid for every staff seat (cost = staff x licence + admin),
-  regardless of adoption, as specified.
+  regardless of adoption, as specified. If seats_for_active_only is True,
+  licences are bought only for that month's active users
+  (staff x adoption x licence, following the ramp). Admin stays fixed, and
+  the one-off training cost still covers all staff.
 - ROI = net value / total cost, over month 0..N, as a fraction (1.0 = 100%).
 - Payback month = first month whose cumulative net value is >= 0
   (None if that never happens within the horizon).
@@ -48,9 +51,18 @@ def one_off_cost(inputs: dict) -> float:
     return float(i["rollout_one_off_gbp"] + training)
 
 
-def monthly_running_cost(inputs: dict) -> float:
+def seats(inputs: dict, adoption: float) -> float:
+    """Licensed seats in a month: all staff, or only active users if toggled on."""
     i = _with_defaults(inputs)
-    return float(i["staff"] * i["licence_per_seat_month_gbp"] + i["admin_per_month_gbp"])
+    return float(i["staff"] * adoption) if i["seats_for_active_only"] else float(i["staff"])
+
+
+def monthly_running_cost(inputs: dict, adoption: float | None = None) -> float:
+    """Licences + admin for one month. adoption defaults to the target (steady state)."""
+    i = _with_defaults(inputs)
+    if adoption is None:
+        adoption = i["adoption"]
+    return float(seats(i, adoption) * i["licence_per_seat_month_gbp"] + i["admin_per_month_gbp"])
 
 
 def monthly_benefit(inputs: dict, adoption: float) -> float:
@@ -69,11 +81,10 @@ def monthly_table(inputs: dict | None = None, months: int = 12) -> pd.DataFrame:
     """Month 0..months with adoption, benefit, cost, net and cumulative net value."""
     i = _with_defaults(inputs)
     rows = []
-    running = monthly_running_cost(i)
     for m in range(0, months + 1):
         adoption = adoption_for_month(m, i["adoption"], i["ramp_months"])
         benefit = monthly_benefit(i, adoption)
-        cost = one_off_cost(i) if m == 0 else running
+        cost = one_off_cost(i) if m == 0 else monthly_running_cost(i, adoption)
         rows.append({"month": m, "adoption": adoption, "benefit": benefit, "cost": cost})
     df = pd.DataFrame(rows)
     df["net"] = df["benefit"] - df["cost"]

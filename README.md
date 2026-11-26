@@ -34,6 +34,7 @@ With the virtual environment active, run `pytest`. The tests check the calculati
 - **Months 1 to 12** each have a benefit and a running cost.
   - Benefit = staff × adoption × hours saved per week × working weeks ÷ 12 × hourly cost × realisation.
   - Running cost = staff × licence per seat + admin. Licences are paid for every seat, not just active users.
+  - If you switch on **Buy seats only for active users**, the licence part uses staff × that month's adoption instead, so it follows the ramp-up. Admin stays the same, and training is still for all staff. Both break-even figures take this into account.
 - **Adoption** ramps up in a straight line to its target over the ramp-up months. With a 3-month ramp and a 60% target, that's 20%, 40%, then 60% from month 3 onwards.
 - **ROI** = net value ÷ total cost, over months 0 to 12.
 - **Payback month** is the first month where cumulative net value reaches zero or more.
