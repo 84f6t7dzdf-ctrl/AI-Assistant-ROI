@@ -12,8 +12,9 @@ Modelling choices (where the brief left room for interpretation):
 - ROI = net value / total cost, over month 0..N, as a fraction (1.0 = 100%).
 - Payback month = first month whose cumulative net value is >= 0
   (None if that never happens within the horizon).
-- Break-even hours = hours saved per user per week at which the net value
-  over the horizon is exactly zero, holding every other input fixed.
+- Break-even hours = hours saved per active user per week at which the
+  steady-state monthly benefit (full target adoption) equals the monthly
+  running cost (licences + admin). The one-off cost and the ramp are ignored.
 """
 
 from __future__ import annotations
@@ -94,16 +95,17 @@ def summary(inputs: dict | None = None, months: int = 12) -> dict:
     }
 
 
-def breakeven_hours(inputs: dict | None = None, months: int = 12) -> float:
-    """Hours saved per user per week needed for zero net value over the horizon.
+def breakeven_hours(inputs: dict | None = None) -> float:
+    """Hours saved per active user per week at which steady-state monthly
+    benefit equals monthly running cost.
 
-    Benefit is linear in hours saved, so solve directly:
-    hours = total_cost / (total benefit per 1 hour saved per week).
+    Steady state means adoption is at its target. Benefit is linear in hours:
+        hours = (staff x licence + admin)
+                / (staff x adoption x working_weeks/12 x hourly_cost x realisation)
     Returns inf if no amount of time saved can break even (e.g. zero adoption).
     """
     i = _with_defaults(inputs)
-    per_hour = dict(i, hours_saved_per_week=1.0)
-    s = summary(per_hour, months)
-    if s["total_benefit"] <= 0:
+    benefit_per_hour = monthly_benefit(dict(i, hours_saved_per_week=1.0), i["adoption"])
+    if benefit_per_hour <= 0:
         return float("inf")
-    return s["total_cost"] / s["total_benefit"]
+    return monthly_running_cost(i) / benefit_per_hour
