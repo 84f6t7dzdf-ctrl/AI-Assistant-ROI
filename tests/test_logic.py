@@ -28,7 +28,14 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from assumptions import DEFAULTS, PRESET_OVERRIDES, preset  # noqa: E402
-from logic import breakeven_hours, hand_checks, monthly_table, payback_hours_12m, summary  # noqa: E402
+from logic import (  # noqa: E402
+    breakeven_hours,
+    hand_checks,
+    monthly_table,
+    payback_hours_12m,
+    sensitivity,
+    summary,
+)
 
 
 def test_table_shape_and_columns():
@@ -194,3 +201,33 @@ def test_presets():
     assert s["payback_month"] == 4
     # Presets never touch the seats toggle.
     assert all("seats_for_active_only" not in o for o in PRESET_OVERRIDES.values())
+
+
+def test_sensitivity():
+    """Hand working at defaults. Base: benefit B = 711,562.5, cost C = 259,000, net 452,562.5.
+    Benefit is proportional to hours, adoption, realisation and hourly cost.
+      Hours 1.5 / 3.5:      B x 0.6 / 1.4 -> net 167,937.5 / 737,187.5   (range 569,250)
+      Realisation 0.3/0.7:  B x 0.6 / 1.4 -> net 167,937.5 / 737,187.5   (range 569,250)
+      Adoption 0.4 / 0.8:   B x 2/3 / 4/3 -> net 215,375 / 689,750       (range 474,375)
+      Hourly cost 35 / 55:  B x 35/45, 55/45 = 553,437.5 / 869,687.5;
+                            training 2 x 500 x rate moves C to 249,000 / 269,000
+                            -> net 304,437.5 / 600,687.5                 (range 296,250)
+      Licence 20 / 35:      C -/+ 12 x 500 x 5 or 10 = 229,000 / 319,000
+                            -> net 482,562.5 / 392,562.5                 (range 90,000)
+    """
+    df = sensitivity(DEFAULTS).set_index("key")
+    expected = {
+        "hours_saved_per_week": (167937.5, 737187.5),
+        "realisation": (167937.5, 737187.5),
+        "adoption": (215375.0, 689750.0),
+        "hourly_cost_gbp": (304437.5, 600687.5),
+        "licence_per_seat_month_gbp": (482562.5, 392562.5),
+    }
+    for key, (lo, hi) in expected.items():
+        assert df.loc[key, "net_at_low"] == pytest.approx(lo), key
+        assert df.loc[key, "net_at_high"] == pytest.approx(hi), key
+    assert df["base_net_value"].tolist() == pytest.approx([452562.5] * 5)
+
+    ordered = sensitivity(DEFAULTS)
+    assert ordered["range"].tolist() == pytest.approx([569250, 569250, 474375, 296250, 90000])
+    assert ordered["key"].tolist()[2:] == ["adoption", "hourly_cost_gbp", "licence_per_seat_month_gbp"]
