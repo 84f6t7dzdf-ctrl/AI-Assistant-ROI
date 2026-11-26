@@ -98,3 +98,25 @@ def test_no_payback_and_no_ramp():
 
 def test_zero_adoption_breakeven_is_infinite():
     assert math.isinf(breakeven_hours(dict(DEFAULTS, adoption=0.0)))
+
+
+def test_one_full_month_matches_hand_check():
+    # Month 3 is the first month at full target adoption.
+    month = monthly_table(DEFAULTS).set_index("month").loc[3]
+    assert month["benefit"] == pytest.approx(64687.5)  # 500 x 0.6 x 2.5 x 46/12 x 45 x 0.5
+    assert month["cost"] == pytest.approx(14500.0)     # 500 x 25 + 2,000
+
+
+def test_payback_month_is_none_when_benefit_below_cost():
+    # 0.5 hours is below the 0.56 steady-state break-even, so every month's
+    # benefit is below its cost and the running total never turns positive.
+    inputs = dict(DEFAULTS, hours_saved_per_week=0.5)
+    df = monthly_table(inputs)
+    assert (df["benefit"] < df["cost"]).all()
+    assert summary(inputs)["payback_month"] is None
+
+
+def test_breakeven_hours_makes_benefit_equal_cost():
+    at_be = dict(DEFAULTS, hours_saved_per_week=breakeven_hours(DEFAULTS))
+    steady = monthly_table(at_be).query("month >= 3")
+    assert steady["benefit"].tolist() == pytest.approx(steady["cost"].tolist())
